@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>八字真太阳时运势系统 v2.5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background-color: #fdfbf7;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* 动画效果 */
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 五行颜色定义 */
+        .wx-金 { color: #d97706; font-weight: bold; }
+        .wx-木 { color: #15803d; font-weight: bold; }
+        .wx-水 { color: #2563eb; font-weight: bold; }
+        .wx-火 { color: #dc2626; font-weight: bold; }
+        .wx-土 { color: #854d0e; font-weight: bold; }
+        
+        /* 运势卡片样式 */
+        .luck-great { border-left: 4px solid #16a34a; background: #f0fdf4; }
+        .luck-good { border-left: 4px solid #ca8a04; background: #fefce8; }
+        .luck-normal { border-left: 4px solid #9ca3af; background: #f9fafb; }
+        .luck-warn { border-left: 4px solid #ea580c; background: #fff7ed; }
+        .luck-bad { border-left: 4px solid #dc2626; background: #fef2f2; }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen pb-12">
+
+    <!-- 顶部导航 -->
+    <header class="bg-gradient-to-r from-red-900 to-red-800 text-orange-50 py-5 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 text-9xl opacity-10 rotate-12 select-none">運</div>
+        <div class="container mx-auto px-4 text-center relative z-10">
+            <h1 class="text-2xl md:text-3xl font-bold tracking-widest">天机 · 运势指南</h1>
+            <p class="text-xs md:text-sm text-red-200 mt-2">真太阳时排盘 | 财运分析 | 穿搭建议</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 mt-8 max-w-4xl">
+
+        <!-- 输入区域 -->
+        <div id="inputSection" class="bg-white rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100 mb-8 transition-all hover:shadow-xl">
+            <div class="flex items-center mb-6">
+                <div class="w-1 h-6 bg-red-800 mr-3 rounded"></div>
+                <h2 class="text-lg font-bold text-gray-800">请输入出生信息</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 日期 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">出生日期 (公历)</label>
+                    <input type="date" id="birthDate" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition">
+                </div>
+                
+                <!-- 时间 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">时</label>
+                        <select id="birthHour" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 outline-none">
+                            <!-- JS 生成 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">分</label>
+                        <select id="birthMinute" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 outline-none">
+                            <!-- JS 生成 -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 性别 -->
+                <div class="flex flex-col justify-center">
+                    <label class="block text-sm font-medium text-gray-600 mb-2">性别</label>
+                    <div class="flex space-x-6">
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="radio" name="gender" value="1" checked class="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300">
+                            <span class="ml-2 group-hover:text-red-700 transition">男 (乾造)</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer group">
+                            <input type="radio" name="gender" value="0" class="w-4 h-4 text-red-600 focus:ring-red-500 border-gray-300">
+                            <span class="ml-2 group-hover:text-red-700 transition">女 (坤造)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 出生地经度 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2 flex justify-between">
+                        <span>出生城市 (经度校正真太阳时)</span>
+                        <a href="https://jingweidu.51240.com/" target="_blank" class="text-red-500 text-xs hover:underline">查询经度</a>
+                    </label>
+                    <div class="flex gap-2">
+                        <select id="citySelect" class="w-1/3 bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm outline-none" onchange="setLongitude(this.value)">
+                            <option value="">快速选择</option>
+                            <option value="116.40">北京</option>
+                            <option value="121.47">上海</option>
+                            <option value="113.26">广州</option>
+                            <option value="114.05">深圳</option>
+                            <option value="104.06">成都</option>
+                            <option value="106.55">重庆</option>
+                            <option value="118.78">南京</option>
+                            <option value="114.16">香港</option>
+                            <option value="121.50">台北</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <input type="number" id="longitude" placeholder="如 116.40" step="0.01" value="120.00" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-500 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="calculateBazi()" class="w-full mt-8 bg-red-900 hover:bg-red-800 text-white font-bold py-4 px-6 rounded-lg transition duration-200 shadow-lg transform hover:-translate-y-0.5 active:translate-y-0">
+                🔮 立即分析今日运势
+            </button>
+            <p class="text-xs text-gray-400 text-center mt-3">数据仅在本地计算，不会上传至服务器</p>
+        </div>
+
+        <!-- 结果展示区 -->
+        <div id="resultSection" class="hidden space-y-8">
+            
+            <!-- 0. 个人身份卡 -->
+            <div class="bg-gray-800 text-gray-200 rounded-xl p-4 shadow-md flex flex-col md:flex-row justify-between items-center text-sm fade-in">
+                <div class="mb-2 md:mb-0">
+                    <span class="text-gray-400">您的日柱(自己)：</span>
+                    <span id="userDayPillar" class="text-xl font-bold text-white ml-2">--</span>
+                    <span id="userIdentityDesc" class="ml-2 bg-gray-700 px-2 py-1 rounded text-xs text-yellow-500"></span>
+                </div>
+                <div class="text-gray-400 text-xs text-center md:text-right">
+                    <p>💡 提示：今日运势重点分析 <strong>日柱</strong> 与 <strong>流日</strong> 的互动。</p>
+                </div>
+            </div>
+
+            <!-- 1. 今日核心运势 (日柱 vs 流日) -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 fade-in">
+                <div class="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-red-100 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-red-900 text-lg">📅 今日运势指引</h3>
+                        <p id="todayDateStr" class="text-xs text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">今日流日</div>
+                        <div id="todayGanzhi" class="text-2xl font-serif font-bold text-gray-800 opacity-80">--</div>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <!-- 重点：日柱互动分析 -->
+                    <div id="interactionCard" class="mb-6 p-4 rounded-lg luck-normal">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-gray-800 flex items-center">
+                                <span class="text-lg mr-2">⚡</span>
+                                日柱应期互动
+                            </h4>
+                            <span id="interactionBadge" class="text-xs font-bold px-2 py-1 bg-gray-200 text-gray-600 rounded">平稳</span>
+                        </div>
+                        <h5 id="interactionTitle" class="text-lg font-bold text-gray-900 mb-1">--</h5>
+                        <p id="interactionDesc" class="text-sm text-gray-700 leading-relaxed">--</p>
+                    </div>
+
+                    <!-- 【新增】今日财运卡片 -->
+                    <div class="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl p-4 border border-yellow-200 shadow-sm mb-8 transform transition hover:scale-[1.01]">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-yellow-900 flex items-center text-lg mb-1">
+                                    <span class="text-2xl mr-2">💰</span> 今日财运
+                                </h4>
+                                <p id="wealthDesc" class="text-sm text-yellow-800 opacity-90">--</p>
+                            </div>
+                            <div class="text-right">
+                                <div id="wealthScore" class="text-yellow-500 text-lg tracking-widest mb-1">⭐⭐⭐</div>
+                                <div class="text-xs text-yellow-700 bg-white bg-opacity-60 px-2 py-1 rounded-full inline-block font-bold">
+                                    🧭 财神位：<span id="caiShenPos">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- 左侧：十神氛围 -->
+                        <div>
+                            <div class="flex items-center mb-3">
+                                <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded mr-2">环境气场</span>
+                                <h4 id="todayTenGodTitle" class="font-bold text-gray-800">--</h4>
+                            </div>
+                            <p id="todayTenGodDesc" class="text-gray-600 text-sm leading-relaxed mb-4">--</p>
+                        </div>
+
+                        <!-- 右侧：行动建议 -->
+                        <div class="border-t md:border-t-0 md:border-l border-dashed border-gray-200 pt-6 md:pt-0 md:pl-8">
+                             <div class="flex items-center mb-3">
+                                <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded mr-2">今日宜忌 & 穿搭</span>
+                                <h4 class="font-bold text-gray-800">生活贴士</h4>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div class="bg-orange-50 p-3 rounded-lg border border-orange-100 transition hover:shadow-md">
+                                    <div class="flex items-center mb-1">
+                                        <span class="text-lg mr-2">🎨</span>
+                                        <span class="text-xs font-bold text-gray-500">幸运色 (提升能量)</span>
+                                    </div>
+                                    <span id="luckyColor" class="text-sm font-bold text-gray-800 block">--</span>
+                                </div>
+                                <div class="bg-green-50 p-3 rounded-lg border border-green-100 transition hover:shadow-md">
+                                    <div class="flex items-center mb-1">
+                                        <span class="text-lg mr-2">🧘</span>
+                                        <span class="text-xs font-bold text-gray-500">宜做之事 (顺势而为)</span>
+                                    </div>
+                                    <span id="luckyAction" class="text-sm text-gray-800 block leading-relaxed">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 八字原局 (Visual Chart) -->
+            <div class="bg-white rounded-xl shadow-md p-6 fade-in">
+                <h3 class="text-center font-bold text-gray-800 mb-6 relative">
+                    <span class="bg-white px-4 relative z-10">您的八字原局</span>
+                    <div class="absolute w-full h-px bg-gray-200 top-1/2 left-0 z-0"></div>
+                </h3>
+
+                <div class="grid grid-cols-4 gap-2 md:gap-4">
+                    <!-- 表头 -->
+                    <div class="text-center text-xs text-gray-400">年柱 (生肖)</div>
+                    <div class="text-center text-xs text-gray-400">月柱</div>
+                    <div class="text-center text-xs text-gray-400 text-red-600 font-bold">日柱 (自己)</div>
+                    <div class="text-center text-xs text-gray-400">时柱</div>
+
+                    <!-- 柱子卡片 -->
+                    <div id="yearPillar" class="bg-gray-50 rounded-lg py-4 text-center border border-gray-100"></div>
+                    <div id="monthPillar" class="bg-gray-50 rounded-lg py-4 text-center border border-gray-100"></div>
+                    <div id="dayPillar" class="bg-red-50 rounded-lg py-4 text-center border border-red-200 shadow-sm transform scale-105 ring-2 ring-red-100"></div>
+                    <div id="hourPillar" class="bg-gray-50 rounded-lg py-4 text-center border border-gray-100"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 初始化逻辑 ---
+        const now = new Date();
+        document.getElementById('birthDate').valueAsDate = now;
+
+        const hourSelect = document.getElementById('birthHour');
+        for(let i=0; i<24; i++) hourSelect.add(new Option(i + " 时", i));
+        hourSelect.value = 12;
+
+        const minSelect = document.getElementById('birthMinute');
+        for(let i=0; i<60; i++) minSelect.add(new Option(i + " 分", i));
+        minSelect.value = 30;
+
+        function setLongitude(val) {
+            if(val && val !== 'other') document.getElementById('longitude').value = val;
+        }
+
+        // --- 全局数据定义 ---
+        const ganHe = {"甲":"己", "己":"甲", "乙":"庚", "庚":"乙", "丙":"辛", "辛":"丙", "丁":"壬", "壬":"丁", "戊":"癸", "癸":"戊"};
+        const ganChong = {"甲":"庚", "庚":"甲", "乙":"辛", "辛":"乙", "丙":"壬", "壬":"丙", "丁":"癸", "癸":"丁"};
+        const zhiHe = {"子":"丑", "丑":"子", "寅":"亥", "亥":"寅", "卯":"戌", "戌":"卯", "辰":"酉", "酉":"辰", "巳":"申", "申":"巳", "午":"未", "未":"午"};
+        const zhiChong = {"子":"午", "午":"子", "丑":"未", "未":"丑", "寅":"申", "申":"寅", "卯":"酉", "酉":"卯", "辰":"戌", "戌":"辰", "巳":"亥", "亥":"巳"};
+
+        const GAN_WX = {"甲":"木", "乙":"木", "丙":"火", "丁":"火", "戊":"土", "己":"土", "庚":"金", "辛":"金", "壬":"水", "癸":"水"};
+        const ZHI_WX = {"子":"水", "丑":"土", "寅":"木", "卯":"木", "辰":"土", "巳":"火", "午":"火", "未":"土", "申":"金", "酉":"金", "戌":"土", "亥":"水"};
+
+        const elementColors = {
+            "木": "🌲 绿色、薄荷绿、青色",
+            "火": "🔥 红色、粉色、紫色、暖橘",
+            "土": "🟤 姜黄、卡其色、米白、咖啡色",
+            "金": "⚪ 白色、银灰、香槟金",
+            "水": "💧 黑色、深蓝、雾霾蓝"
+        };
+
+        // 十神 - 生活建议与财运映射
+        // rel: 五行关系 (0同, 1生, 2克, 3被克, 4被生)
+        const tenGodAdvice = {
+            "比肩": { title: "比肩日 · 朋友与竞争", desc: "能量相同，利于合作。适合团体活动，但买单时AA制为佳。", action: "约朋友吃火锅、团队运动、拼单购物", rel: 0 },
+            "劫财": { title: "劫财日 · 破耗与忙碌", desc: "易冲动消费，捂紧钱包。适合主动请客花钱免灾，不做风险投资。", action: "给自己买礼物、请客吃饭、健身暴汗", rel: 1 },
+            "食神": { title: "食神日 · 享乐与口福", desc: "心情舒畅，口福不浅。今天才华横溢，适合吃喝玩乐。", action: "探店新餐厅、看电影、唱KTV、做SPA", rel: 2 },
+            "伤官": { title: "伤官日 · 创意与是非", desc: "脑洞大开，利于解决难题。别怼老板，低调做人。", action: "换发型、玩剧本杀、头脑风暴、写日记", rel: 4 },
+            "正财": { title: "正财日 · 踏实与收获", desc: "财运平稳，多劳多得。把钱花在刀刃上，适合存钱。", action: "整理房间、记账理财、添置家居、加班搬砖", rel: 3 },
+            "偏财": { title: "偏财日 · 机遇与人际", desc: "人缘好，桃花旺。适合商业谈判，或者买张彩票碰运气。", action: "买彩票、商务局、约会表白、研究基金", rel: 2 },
+            "正官": { title: "正官日 · 秩序与贵人", desc: "易得领导赏识。适合做正经事，穿得正式点运气更好。", action: "制定计划、面试求职、穿正装、拜访客户", rel: 4 },
+            "七杀": { title: "七杀日 · 压力与魄力", desc: "压力大动力足。适合处理硬骨头，运动出汗解压。", action: "高强度运动(HIIT)、大扫除、解决积压难题", rel: 1 },
+            "正印": { title: "正印日 · 学习与安逸", desc: "贵人运好，脑子好使。适合佛系养生，休养生息。", action: "泡澡养生、看书学习、祈福、看望父母", rel: 0 },
+            "偏印": { title: "偏印日 · 灵感与孤独", desc: "直觉准，想法独特。适合钻研冷门知识，独处充电。", action: "冥想打坐、研究玄学、听小众音乐、独处", rel: 2 }
+        };
+
+        // 【新增】财运评分表
+        const wealthMap = {
+            "比肩": { score: "⭐⭐", desc: "财运平平，适合合作求财，但需防兄弟朋友分利，不宜借贷。" },
+            "劫财": { score: "⭐", desc: "财星受克，容易有冲动消费或破财之事，捂紧钱包，避免投资。" },
+            "食神": { score: "⭐⭐⭐⭐", desc: "财源有根，凭借才华或技术生财，轻松获利，适合吃喝谈生意。" },
+            "伤官": { score: "⭐⭐⭐⭐", desc: "生财有道，创意生财，利于险中求胜，但需注意方式方法。" },
+            "正财": { score: "⭐⭐⭐⭐⭐", desc: "财星当令，正财运旺，努力工作有回报，适合理财储蓄，积少成多。" },
+            "偏财": { score: "⭐⭐⭐⭐⭐", desc: "财气通门户，偏财运佳，利于投资、奖金或意外之财，可以买张彩票试试。" },
+            "正官": { score: "⭐⭐⭐", desc: "财气稳定，利于职场正财，升职加薪有望，但需按部就班。" },
+            "七杀": { score: "⭐⭐", desc: "财运起伏，压力中求财，风险较大，可能因意外支出破财，宜保守。" },
+            "正印": { score: "⭐⭐", desc: "财运平稳，利于长线投资或知识变现，现金流一般，适合规划。" },
+            "偏印": { score: "⭐⭐", desc: "财路独特，适合冷门偏门求财，直觉敏锐，但容易错失主流机会。" }
+        };
+
+        // --- 计算主函数 ---
+        function calculateBazi() {
+            const dateStr = document.getElementById('birthDate').value;
+            const hour = parseInt(document.getElementById('birthHour').value);
+            const minute = parseInt(document.getElementById('birthMinute').value);
+            const longitude = parseFloat(document.getElementById('longitude').value) || 120;
+
+            if(!dateStr) { alert("请选择日期"); return; }
+
+            const dateParts = dateStr.split('-');
+            const offsetMin = (longitude - 120) * 4;
+            let date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1])-1, parseInt(dateParts[2]), hour, minute);
+            let solarTimeMs = date.getTime() + (offsetMin * 60 * 1000);
+            let solarDate = new Date(solarTimeMs);
+
+            const solar = Solar.fromYmdHms(solarDate.getFullYear(), solarDate.getMonth()+1, solarDate.getDate(), solarDate.getHours(), solarDate.getMinutes(), solarDate.getSeconds());
+            const lunar = solar.getLunar();
+            const bazi = lunar.getEightChar();
+
+            const today = Solar.fromDate(new Date());
+            const todayLunar = today.getLunar();
+
+            renderIdentity(bazi, lunar); 
+            renderChart(bazi);
+            renderDailyLuck(bazi, todayLunar);
+
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('resultSection').scrollIntoView({behavior: 'smooth'});
+        }
+
+        // --- 渲染身份 ---
+        function renderIdentity(bazi, lunar) {
+            const dayGan = bazi.getDayGan(); 
+            const dayZhi = bazi.getDayZhi();
+            const dayWx = GAN_WX[dayGan]; 
+            const zodiac = lunar.getYearShengXiao(); 
+
+            const html = `${dayGan}${dayZhi} <span class="text-sm font-normal text-gray-400">(${dayWx}命)</span>`;
+            document.getElementById('userDayPillar').innerHTML = html;
+            document.getElementById('userIdentityDesc').innerText = `属${zodiac}`;
+        }
+
+        // --- 渲染八字盘 ---
+        function renderChart(bazi) {
+            const pillars = [
+                { id: 'yearPillar', val: bazi.getYear() },
+                { id: 'monthPillar', val: bazi.getMonth() },
+                { id: 'dayPillar', val: bazi.getDay() },
+                { id: 'hourPillar', val: bazi.getTime() }
+            ];
+
+            const getWxHtml = (char) => {
+                const gan = char.charAt(0);
+                const zhi = char.charAt(1);
+                const ganWx = GAN_WX[gan];
+                const zhiWx = ZHI_WX[zhi];
+
+                return `<div class="text-xl font-bold mb-1">
+                            <span class="wx-${ganWx}">${gan}</span>
+                            <br>
+                            <span class="wx-${zhiWx}">${zhi}</span>
+                        </div>`;
+            };
+
+            pillars.forEach(p => {
+                document.getElementById(p.id).innerHTML = getWxHtml(p.val);
+            });
+        }
+
+        // --- 核心：每日运势 ---
+        function renderDailyLuck(bazi, today) {
+            // A. 基础信息
+            document.getElementById('todayDateStr').innerText = `${today.getYear()}年${today.getMonth()}月${today.getDay()}日`;
+            document.getElementById('todayGanzhi').innerText = today.getDayInGanZhi();
+
+            // B. 互动逻辑
+            const userGan = bazi.getDayGan();
+            const userZhi = bazi.getDayZhi();
+            const todayGan = today.getDayGan();
+            const todayZhi = today.getDayZhi();
+            const relation = analyzeInteraction(userGan, userZhi, todayGan, todayZhi);
+            
+            const card = document.getElementById('interactionCard');
+            card.className = `mb-6 p-4 rounded-lg luck-${relation.type}`;
+            document.getElementById('interactionBadge').innerText = relation.badge;
+            document.getElementById('interactionTitle').innerText = relation.title;
+            document.getElementById('interactionDesc').innerText = relation.desc;
+
+            // C. 十神与建议
+            const me = bazi.getDayGan(); 
+            const dayEnv = today.getDayGan(); 
+            const meWx = GAN_WX[me]; 
+            
+            const tenGodName = getTenGodName(me, dayEnv);
+            const advice = tenGodAdvice[tenGodName] || tenGodAdvice["比肩"]; 
+            
+            // D. 计算财运信息
+            const wealthInfo = wealthMap[tenGodName] || wealthMap["比肩"];
+            // 获取财神方位 (来自 lunar 库)
+            const caiShenPos = today.getDayPositionCai();
+
+            // 填充财运UI
+            document.getElementById('wealthScore').innerText = wealthInfo.score;
+            document.getElementById('wealthDesc').innerText = wealthInfo.desc;
+            document.getElementById('caiShenPos').innerText = caiShenPos;
+
+            // 动态计算具体颜色
+            const elements = ["木", "火", "土", "金", "水"];
+            const meIdx = elements.indexOf(meWx);
+            const targetIdx = (meIdx + advice.rel) % 5;
+            const targetElement = elements[targetIdx];
+            const specificColors = elementColors[targetElement];
+
+            document.getElementById('todayTenGodTitle').innerText = `${advice.title}`;
+            document.getElementById('todayTenGodDesc').innerText = advice.desc;
+            document.getElementById('luckyAction').innerText = advice.action;
+            document.getElementById('luckyColor').innerText = specificColors;
+        }
+
+        function analyzeInteraction(uGan, uZhi, tGan, tZhi) {
+            let ganRel = null;
+            let zhiRel = null;
+
+            if (ganHe[uGan] === tGan) ganRel = "合";
+            else if (ganChong[uGan] === tGan) ganRel = "冲";
+            else if (uGan === tGan) ganRel = "同";
+
+            if (zhiHe[uZhi] === tZhi) zhiRel = "合";
+            else if (zhiChong[uZhi] === tZhi) zhiRel = "冲";
+            else if (uZhi === tZhi) zhiRel = "同";
+
+            if (ganRel === "合" && zhiRel === "合") return { badge: "大吉", title: "天地鸳鸯合 · 万事顺遂", desc: "日柱与流日天合地合，为难得的吉日！人缘极佳，易得贵人暗助，办事如有神助。", type: "great" };
+            if (ganRel === "冲" && zhiRel === "冲") return { badge: "动荡", title: "天克地冲 · 变动之象", desc: "日柱与流日天冲地克，运势波动剧烈。情绪易不稳，注意出行安全与口舌是非，宜静不宜动。", type: "bad" };
+            if (ganRel === "同" && zhiRel === "同") return { badge: "伏吟", title: "日柱伏吟 · 沉思内省", desc: "流日与日柱完全相同。能量重叠，容易在此地打转或心情郁闷，适合内省、独处。", type: "warn" };
+
+            if (ganRel === "合") return { badge: "小吉", title: "天干五合 · 外缘佳", desc: "天干相合，代表对外人际关系和谐，容易达成共识，适合社交和谈判。", type: "good" };
+            if (zhiRel === "合") return { badge: "小吉", title: "地支六合 · 内助强", desc: "地支相合，代表内心踏实，暗中有贵人助力，家庭或私事较顺。", type: "good" };
+            if (ganRel === "冲") return { badge: "压力", title: "天干相冲 · 压力显", desc: "天干相冲，表面压力较大，容易有口舌争端或突发任务，需控制脾气。", type: "warn" };
+            if (zhiRel === "冲") return { badge: "奔波", title: "地支相冲 · 走动多", desc: "地支相冲，代表根基不稳，内心不安或身体小恙，也主走动奔波之事，适合出差。", type: "warn" };
+
+            return { badge: "平稳", title: "运势平顺 · 按部就班", desc: "今日日柱与流日无明显剧烈冲合，气场稳定。适合按既定计划行事，保持平常心即可。", type: "normal" };
+        }
+
+        function getTenGodName(me, target) {
+            const ganMap = { "甲":[0,0], "乙":[0,1], "丙":[1,0], "丁":[1,1], "戊":[2,0], "己":[2,1], "庚":[3,0], "辛":[3,1], "壬":[4,0], "癸":[4,1] };
+            if(!ganMap[me] || !ganMap[target]) return "比肩";
+
+            const [meWx, meYinYang] = ganMap[me];
+            const [targetWx, targetYinYang] = ganMap[target];
+
+            const diff = (targetWx - meWx + 5) % 5;
+            const sameYinYang = (meYinYang === targetYinYang);
+
+            if(diff === 0) return sameYinYang ? "比肩" : "劫财";
+            if(diff === 1) return sameYinYang ? "食神" : "伤官";
+            if(diff === 2) return sameYinYang ? "偏财" : "正财";
+            if(diff === 3) return sameYinYang ? "七杀" : "正官";
+            if(diff === 4) return sameYinYang ? "偏印" : "正印";
+            return "比肩";
+        }
+    </script>
+</body>
+</html>
